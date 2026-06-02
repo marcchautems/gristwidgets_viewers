@@ -82,8 +82,17 @@ async function gristRecordSelected(record, mappedColNamesToRealColNames) {
       console.error(`viewerjs: ${msg}`);
       throw new Error(msg);
     }
+    // If the attachment ID is empty/null, show a clear empty state.
+    let attachmentId = mappedRecord[ATTACHMENTID_COL_NAME];
+    if (!attachmentId) {
+      previousUrl = null;
+      document.querySelector("#viewer").innerHTML = "";
+      setStatus("No attachment for this row.");
+      setVisible("#viewer", false);
+      return;
+    }
     // Get the URL we want to view.
-    let documentUrl = await gristGetAttachmentURL(mappedRecord[ATTACHMENTID_COL_NAME]);
+    let documentUrl = await gristGetAttachmentURL(attachmentId);
     let viewerBaseUrl = `${window.location.origin + window.location.pathname.slice(0, window.location.pathname.lastIndexOf('/'))}/ViewerJS/`;
     let viewerParams = [];
 
