@@ -153,7 +153,6 @@ ready(function(){
   grist.onRecord(gristRecordSelected);
   // When the linked set of records becomes empty (no matching rows), clear the viewer.
   grist.onRecords(function(records) {
-    console.log("viewerjs: onRecords fired, count:", records.length);
     if (records.length === 0) {
       previousUrl = null;
       document.querySelector("#viewer").innerHTML = "";
