@@ -57,15 +57,25 @@ async function gristGetAttachmentURL(attachmentId) {
   return url;
 }
 
+async function detectFileType(url) {
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    const contentType = response.headers.get('Content-Type') || '';
+    if (contentType.includes('pdf')) return 'pdf';
+    if (contentType.startsWith('image/')) return 'image';
+    if (contentType.startsWith('text/')) return 'text';
+    return 'unknown';
+  } catch (e) {
+    console.warn('viewerjs: Could not detect file type, defaulting to PDF viewer.', e);
+    return 'pdf';
+  }
+}
+
 async function gristRecordSelected(record, mappedColNamesToRealColNames) {
   console.log("viewerjs: gristRecordSelected() with record, mappedColNamesToRealColNames:", record, mappedColNamesToRealColNames);
   setStatus("Loading...");
   setVisible("#viewer", false);
   try {
-    //const mappedRecord = grist.mapColumnNames(record);
-    //if (!mappedRecord) {
-    //  throw new Error("Please map all required columns first.");
-    //}
     // Unfortunately, Grist's mapColumnNames function doesn't handle optional column mappings
     // properly, so we need to map stuff ourselves.
     const mappedRecord = {}
@@ -91,40 +101,69 @@ async function gristRecordSelected(record, mappedColNamesToRealColNames) {
       setVisible("#viewer", false);
       return;
     }
-    // Get the URL we want to view.
+    // Get the URL and detect the file type.
     let documentUrl = await gristGetAttachmentURL(attachmentId);
-    let viewerBaseUrl = `${window.location.origin + window.location.pathname.slice(0, window.location.pathname.lastIndexOf('/'))}/ViewerJS/`;
-    let viewerParams = [];
+    let fileType = await detectFileType(documentUrl);
+    let viewerElem = document.querySelector("#viewer");
 
-    // Add extra parameters to the iframe URL if the corresponding columns have been mapped.
-    if (DEFAULTZOOM_COL_NAME in mappedRecord) {
-      let defaultZoomSetting = mappedRecord[DEFAULTZOOM_COL_NAME];
-      if (!DEFAULTZOOM_ALLOWED_VALUES.includes(defaultZoomSetting)) {
-        console.warn(`viewerjs: Supplied default zoom setting '${defaultZoomSetting}' is not valid. Valid values are:`, DEFAULTZOOM_ALLOWED_VALUES);
-      } else {
-        viewerParams.push(`zoom=${encodeURIComponent(defaultZoomSetting)}`);
+    if (fileType === 'pdf') {
+      let viewerBaseUrl = `${window.location.origin + window.location.pathname.slice(0, window.location.pathname.lastIndexOf('/'))}/ViewerJS/`;
+      let viewerParams = [];
+      if (DEFAULTZOOM_COL_NAME in mappedRecord) {
+        let defaultZoomSetting = mappedRecord[DEFAULTZOOM_COL_NAME];
+        if (!DEFAULTZOOM_ALLOWED_VALUES.includes(defaultZoomSetting)) {
+          console.warn(`viewerjs: Supplied default zoom setting '${defaultZoomSetting}' is not valid. Valid values are:`, DEFAULTZOOM_ALLOWED_VALUES);
+        } else {
+          viewerParams.push(`zoom=${encodeURIComponent(defaultZoomSetting)}`);
+        }
       }
-    }
-    if (DOCTITLE_COL_NAME in mappedRecord) {
-      viewerParams.push(`title=${encodeURIComponent(mappedRecord[DOCTITLE_COL_NAME])}`);
-    }
-
-    let viewerFullUrl = `${viewerBaseUrl}?${viewerParams.join("&")}#${documentUrl}`;
-    if (viewerFullUrl != previousUrl) {
-      previousUrl = viewerFullUrl;
-      console.log(`viewerjs: Setting viewer URL to '${viewerFullUrl}'.`);
-      let viewerElem = document.querySelector("#viewer");
-      // Wipe the content element clean.
-      viewerElem.innerHTML = "";
-      // Build a new iframe.
-      let iframeElem = document.createElement("iframe");
-      // Set up the iframe and attach it to the '#viewer' container.
-      iframeElem.src = viewerFullUrl;
-      viewerElem.appendChild(iframeElem);
-      iframeElem.className = "viewer-frame";
-      iframeElem.setAttribute('allowFullScreen', '');
+      if (DOCTITLE_COL_NAME in mappedRecord) {
+        viewerParams.push(`title=${encodeURIComponent(mappedRecord[DOCTITLE_COL_NAME])}`);
+      }
+      let viewerFullUrl = `${viewerBaseUrl}?${viewerParams.join("&")}#${documentUrl}`;
+      if (viewerFullUrl !== previousUrl) {
+        previousUrl = viewerFullUrl;
+        console.log(`viewerjs: Setting PDF viewer URL to '${viewerFullUrl}'.`);
+        viewerElem.innerHTML = "";
+        let iframeElem = document.createElement("iframe");
+        iframeElem.src = viewerFullUrl;
+        iframeElem.className = "viewer-frame";
+        iframeElem.setAttribute('allowFullScreen', '');
+        viewerElem.appendChild(iframeElem);
+      } else {
+        console.log(`viewerjs: Not reloading the viewer as its URL hasn't changed.`);
+      }
+    } else if (fileType === 'image') {
+      if (documentUrl !== previousUrl) {
+        previousUrl = documentUrl;
+        console.log(`viewerjs: Displaying image '${documentUrl}'.`);
+        viewerElem.innerHTML = "";
+        let wrapper = document.createElement("div");
+        wrapper.className = "image-wrapper";
+        let imgElem = document.createElement("img");
+        imgElem.src = documentUrl;
+        imgElem.className = "viewer-image";
+        wrapper.appendChild(imgElem);
+        viewerElem.appendChild(wrapper);
+      }
+    } else if (fileType === 'text') {
+      if (documentUrl !== previousUrl) {
+        previousUrl = documentUrl;
+        console.log(`viewerjs: Displaying text file '${documentUrl}'.`);
+        viewerElem.innerHTML = "";
+        const response = await fetch(documentUrl);
+        const text = await response.text();
+        let preElem = document.createElement("pre");
+        preElem.className = "viewer-text";
+        preElem.textContent = text;
+        viewerElem.appendChild(preElem);
+      }
     } else {
-      console.log(`viewerjs: Not reloading the viewer as its URL hasn't changed.`);
+      previousUrl = documentUrl;
+      viewerElem.innerHTML = "";
+      setStatus(`Unsupported file type. <a href="${documentUrl}" target="_blank">Download attachment</a>`);
+      setVisible("#viewer", false);
+      return;
     }
     setVisible("#viewer", true);
     setVisible("#status", false);
