@@ -151,5 +151,14 @@ ready(function(){
   });
   // Register callback for when the user selects a record in Grist.
   grist.onRecord(gristRecordSelected);
+  // When the linked set of records becomes empty (no matching rows), clear the viewer.
+  grist.onRecords(function(records) {
+    if (records.length === 0) {
+      previousUrl = null;
+      document.querySelector("#viewer").innerHTML = "";
+      setStatus("No attachment for this row.");
+      setVisible("#viewer", false);
+    }
+  });
   console.log("viewerjs: Ready.");
 });
