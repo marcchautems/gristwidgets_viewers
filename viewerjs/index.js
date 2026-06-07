@@ -97,7 +97,7 @@ function updateNavBar() {
     return;
   }
   navElem.style.display = "flex";
-  document.querySelector("#attachment-counter").textContent = `${currentAttachmentIndex + 1} / ${currentAttachmentIds.length}`;
+  document.querySelector("#attachment-counter").textContent = `📎 Attachment ${currentAttachmentIndex + 1} of ${currentAttachmentIds.length}`;
   document.querySelector("#prev-attachment").disabled = (currentAttachmentIndex <= 0);
   document.querySelector("#next-attachment").disabled = (currentAttachmentIndex >= currentAttachmentIds.length - 1);
 }
