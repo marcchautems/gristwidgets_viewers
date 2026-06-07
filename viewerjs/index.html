@@ -50,10 +50,44 @@
         font-family: monospace;
         font-size: 0.9em;
       }
+      #attachment-nav {
+        position: fixed;
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: none;
+        align-items: center;
+        gap: 8px;
+        background: rgba(0, 0, 0, 0.6);
+        color: #fff;
+        padding: 4px 14px;
+        border-radius: 16px;
+        font-family: sans-serif;
+        font-size: 0.9em;
+        z-index: 10;
+      }
+      #attachment-nav button {
+        background: none;
+        border: none;
+        color: #fff;
+        font-size: 1.2em;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0 4px;
+      }
+      #attachment-nav button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
     </style>
   </head>
   <body>
     <div id="status"></div>
     <div id="viewer" style="display:none"></div>
+    <div id="attachment-nav">
+      <button id="prev-attachment">‹</button>
+      <span id="attachment-counter"></span>
+      <button id="next-attachment">›</button>
+    </div>
   </body>
 </html>
